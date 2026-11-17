@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Configurador de proyectos: alcance, entrega, pagos y comparación de presupuestos. Demo con precios ficticios.">
+  <title>Cotizador de servicios · Demo POC</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #152b3b;
+      --muted: #526779;
+      --blue: #005bc4;
+      --border: #d6e0e8;
+      --error: #a32323;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #f4f7fa; color: var(--ink); line-height: 1.5; }
+    button, input, select { font: inherit; }
+    .page { width: min(1080px, 100%); margin: auto; padding: 36px 28px 28px; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding-bottom: 24px; border-bottom: 1px solid var(--border); }
+    .brand { font-size: 14px; font-weight: 750; letter-spacing: .02em; }
+    .badge { padding: 6px 12px; border-radius: 999px; background: #e2eefc; color: #064e99; font-size: 12px; font-weight: 650; }
+    .intro { margin: 46px 0 30px; max-width: 650px; }
+    .eyebrow { margin: 0 0 10px; color: var(--blue); font-size: 12px; font-weight: 750; letter-spacing: .12em; text-transform: uppercase; }
+    h1 { font-size: clamp(30px, 4.5vw, 46px); line-height: 1.12; letter-spacing: -.04em; margin: 0 0 16px; }
+    .intro > p:last-child { color: var(--muted); margin: 0; font-size: 16px; }
+    .layout { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); align-items: start; gap: 28px; }
+    h2 { margin: 0 0 16px; font-size: 18px; letter-spacing: -.02em; }
+    .service { margin-bottom: 12px; padding: 22px; background: white; border: 1px solid var(--border); border-radius: 14px; }
+    .service-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+    h3 { margin: 0; font-size: 17px; }
+    .unit-price { font-size: 14px; font-weight: 700; white-space: nowrap; }
+    .description { color: var(--muted); font-size: 14px; margin: 6px 0 20px; }
+    .service-controls { display: flex; align-items: end; justify-content: space-between; gap: 18px; }
+    label, .line-label { display: block; color: var(--muted); font-size: 12px; margin-bottom: 6px; }
+    input { display: block; width: 112px; min-height: 44px; border: 1px solid #8799ab; border-radius: 7px; padding: 8px 10px; background: white; color: var(--ink); }
+    input[aria-invalid="true"] { border-color: var(--error); background: #fff7f6; }
+    :focus-visible { outline: 3px solid #005bc4; outline-offset: 3px; }
+    .line-total { text-align: right; }
+    .line-total output { font-weight: 750; font-variant-numeric: tabular-nums; }
+    select, .project-input { width: 100%; min-height: 44px; border: 1px solid #8799ab; border-radius: 7px; padding: 8px 10px; background: white; color: var(--ink); }
+    .project-input { max-width: none; }
+    .service-controls { flex-wrap: wrap; }
+    .complexity { flex: 1; min-width: 140px; }
+    .config { background: white; padding: 22px; border: 1px solid var(--border); border-radius: 14px; margin: 24px 0; }
+    .config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+    .hint { color: var(--muted); font-size: 12px; margin: 10px 0 0; }
+    .breakdown { margin: 24px 0; padding-bottom: 18px; border-bottom: 1px solid #567083; }
+    .breakdown > div { display: flex; justify-content: space-between; gap: 12px; margin: 10px 0; font-size: 14px; }
+    .breakdown dt { color: #c7d5e1; }
+    .breakdown dd { margin: 0; font-variant-numeric: tabular-nums; text-align: right; }
+    .payment-detail { padding: 14px; background: #233f52; border-radius: 8px; font-size: 13px; margin-top: 18px; }
+    .payment-detail strong { display: block; margin-bottom: 4px; }
+    .payment-detail p { margin: 0; color: #d4e2ed; }
+    .primary-button { width: 100%; min-height: 46px; background: #d1e8ff; color: #133a61; border: 0; border-radius: 8px; font-weight: 750; padding: 10px; cursor: pointer; }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+    .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 8px 0; }
+    .actions button { font-size: 12px; }
+    .summary { position: sticky; top: 24px; }
+    .saved-section { margin-top: 32px; }
+    .section-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
+    .section-heading span { font-size: 12px; color: var(--muted); }
+    .table-wrap { overflow-x: auto; background: white; border: 1px solid var(--border); border-radius: 12px; }
+    table { width: 100%; border-collapse: collapse; min-width: 560px; font-size: 13px; }
+    caption { text-align: left; padding: 16px; color: var(--muted); font-size: 12px; }
+    th, td { text-align: left; padding: 14px 16px; border-top: 1px solid var(--border); vertical-align: top; overflow-wrap: anywhere; }
+    th { color: var(--muted); font-weight: 600; }
+    td strong { display: block; }
+    .table-button { background: #e8f1fc; border: 1px solid #bfd3eb; border-radius: 6px; color: #064e99; padding: 7px 10px; cursor: pointer; margin: 4px 6px 0 0; }
+    #saved-status { color: var(--muted); font-size: 13px; }
+    #print-view { display: none; }
+    .field-error { margin: 10px 0 0; font-size: 13px; color: var(--error); }
+    [hidden] { display: none !important; }
+    .summary { background: var(--ink); color: white; border-radius: 16px; padding: 28px; }
+    .summary h2 { margin-bottom: 10px; }
+    .summary-copy { font-size: 14px; color: #c7d5e1; margin: 0 0 30px; }
+    .total-label { display: block; font-size: 13px; color: #c7d5e1; margin-bottom: 6px; }
+    #grand-total { display: block; font-size: clamp(32px, 4vw, 44px); line-height: 1.15; font-weight: 750; letter-spacing: -.04em; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+    #grand-total[data-invalid="true"] { font-size: 23px; letter-spacing: -.02em; }
+    .summary-note { color: #c7d5e1; font-size: 12px; margin: 14px 0 24px; }
+    .reset-button { width: 100%; min-height: 46px; border: 1px solid #678092; background: transparent; border-radius: 8px; padding: 10px 14px; color: white; font-weight: 650; cursor: pointer; }
+    .reset-button:hover { background: #243f52; }
+    .reset-button:focus-visible { outline-color: #94c7ff; }
+    .scope-note { color: var(--muted); font-size: 12px; margin: 14px 4px 0; }
+    footer { margin-top: 38px; padding-top: 18px; border-top: 1px solid var(--border); color: var(--muted); font-size: 12px; }
+    noscript p { padding: 16px; background: #fff0e8; border: 1px solid #a32323; }
+    @media (max-width: 720px) {
+      .page { padding: 22px 18px; }
+      .intro { margin-top: 30px; }
+      .layout { grid-template-columns: 1fr; gap: 20px; }
+      .summary { padding: 24px; }
+      .config-grid { grid-template-columns: 1fr; }
+    }
+    @media print {
+      body { background: white; }
+      .page { display: none; }
+      #print-view { display: block; white-space: pre-wrap; font: 12pt/1.6 system-ui, sans-serif; color: black; margin: 24px; }
+    }
+    @media (max-width: 380px) {
+      .topbar { align-items: flex-start; flex-direction: column; gap: 8px; }
+      .service { padding: 18px; }
+      .service-heading { align-items: flex-start; flex-direction: column; gap: 3px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="topbar">
+      <span class="brand">Estudio digital / Configurador de proyectos</span>
+      <span class="badge">Demo · precios ficticios</span>
+    </header>
+
+    <main>
+      <div class="intro">
+        <p class="eyebrow">De la idea al presupuesto</p>
+        <h1>¿Qué querés construir?</h1>
+        <p>Definí el alcance, ajustá la entrega y compará alternativas antes de elegir tu próximo proyecto.</p>
+      </div>
+
+      <noscript><p>Activá JavaScript en el navegador para calcular el presupuesto.</p></noscript>
+
+      <form id="quote-form" class="layout" novalidate>
+        <section aria-labelledby="services-heading">
+          <h2 id="services-heading">01 / Elegí tus servicios</h2>
+
+          <article class="service" data-price="30000">
+            <div class="service-heading">
+              <h3>Landing page</h3>
+              <span class="unit-price" id="landing-price"></span>
+            </div>
+            <p class="description">Una página para presentar tu producto o servicio.</p>
+            <div class="service-controls">
+              <div>
+                <label for="landing">Cantidad de landing pages</label>
+                <input id="landing" name="landing" type="number" min="0" step="1" required value="0" inputmode="numeric" autocomplete="off" aria-describedby="landing-price landing-error">
+              </div>
+              <div class="complexity">
+                <label for="landing-level">Alcance de landing page</label>
+                <select id="landing-level" name="landing-level">
+                  <option value="basic">Básico · ×1</option>
+                  <option value="standard">Estándar · ×1,5</option>
+                  <option value="advanced">Avanzado · ×2</option>
+                </select>
+              </div>
+              <div class="line-total">
+                <span class="line-label" id="landing-subtotal-label">Subtotal</span>
+                <output id="landing-subtotal" for="landing" aria-labelledby="landing-subtotal-label"></output>
+              </div>
+            </div>
+            <p id="landing-error" class="field-error" hidden></p>
+          </article>
+
+          <article class="service" data-price="50000">
+            <div class="service-heading">
+              <h3>Dashboard</h3>
+              <span class="unit-price" id="dashboard-price"></span>
+            </div>
+            <p class="description">Un panel para visualizar tus datos principales.</p>
+            <div class="service-controls">
+              <div>
+                <label for="dashboard">Cantidad de dashboards</label>
+                <input id="dashboard" name="dashboard" type="number" min="0" step="1" required value="0" inputmode="numeric" autocomplete="off" aria-describedby="dashboard-price dashboard-error">
+              </div>
+              <div class="complexity">
+                <label for="dashboard-level">Alcance de dashboard</label>
+                <select id="dashboard-level" name="dashboard-level">
+                  <option value="basic">Básico · ×1</option>
+                  <option value="standard">Estándar · ×1,5</option>
+                  <option value="advanced">Avanzado · ×2</option>
+                </select>
+              </div>
+              <div class="line-total">
+                <span class="line-label" id="dashboard-subtotal-label">Subtotal</span>
+                <output id="dashboard-subtotal" for="dashboard" aria-labelledby="dashboard-subtotal-label"></output>
+              </div>
+            </div>
+            <p id="dashboard-error" class="field-error" hidden></p>
+          </article>
+
+          <article class="service" data-price="20000">
+            <div class="service-heading">
+              <h3>Automatización</h3>
+              <span class="unit-price" id="automation-price"></span>
+            </div>
+            <p class="description">Un flujo sencillo para resolver una tarea repetitiva.</p>
+            <div class="service-controls">
+              <div>
+                <label for="automation">Cantidad de automatizaciones</label>
+                <input id="automation" name="automation" type="number" min="0" step="1" required value="0" inputmode="numeric" autocomplete="off" aria-describedby="automation-price automation-error">
+              </div>
+              <div class="complexity">
+                <label for="automation-level">Alcance de automatización</label>
+                <select id="automation-level" name="automation-level">
+                  <option value="basic">Básico · ×1</option>
+                  <option value="standard">Estándar · ×1,5</option>
+                  <option value="advanced">Avanzado · ×2</option>
+                </select>
+              </div>
+              <div class="line-total">
+                <span class="line-label" id="automation-subtotal-label">Subtotal</span>
+                <output id="automation-subtotal" for="automation" aria-labelledby="automation-subtotal-label"></output>
+              </div>
+            </div>
+            <p id="automation-error" class="field-error" hidden></p>
+          </article>
+          <p class="hint">Cada subtotal = precio base × cantidad × alcance. Básico: una función central; estándar: varias vistas o pasos; avanzado: más variantes y personalización.</p>
+
+          <section class="config" aria-labelledby="config-heading">
+            <h2 id="config-heading">02 / Ajustá las condiciones</h2>
+            <label for="project-name">Nombre de la alternativa (opcional)</label>
+            <input class="project-input" id="project-name" name="project-name" type="text" maxlength="60" placeholder="Ej.: Lanzamiento express" autocomplete="off">
+            <div class="config-grid">
+              <div>
+                <label for="delivery">Entrega estimada</label>
+                <select id="delivery" name="delivery">
+                  <option value="normal">Estándar · 15 días · sin recargo</option>
+                  <option value="express">Express · 7 días · +20 %</option>
+                </select>
+              </div>
+              <div>
+                <label for="payment">Distribución del pago</label>
+                <select id="payment" name="payment">
+                  <option value="split">50 % al iniciar / 50 % al entregar</option>
+                  <option value="thirds">3 cuotas sin recargo</option>
+                </select>
+              </div>
+            </div>
+            <p class="hint">10 % de descuento desde $100.000 de subtotal. El recargo express se calcula después del descuento. Plazos y condiciones ficticios para esta demo.</p>
+          </section>
+        </section>
+
+        <aside aria-labelledby="summary-heading">
+          <div class="summary">
+            <h2 id="summary-heading">03 / Tu presupuesto</h2>
+            <p class="summary-copy" id="project-title">Tu próximo proyecto</p>
+            <dl class="breakdown">
+              <div><dt>Subtotal de servicios</dt><dd id="base-total"></dd></div>
+              <div><dt>Descuento por volumen · 10 %</dt><dd id="discount-total"></dd></div>
+              <div><dt>Recargo express · 20 %</dt><dd id="rush-total"></dd></div>
+            </dl>
+            <span class="total-label" id="total-label">Total estimado · ARS</span>
+            <output id="grand-total" for="landing dashboard automation" aria-labelledby="total-label" aria-live="polite" aria-atomic="true"></output>
+            <div class="payment-detail">
+              <strong id="delivery-detail"></strong>
+              <p id="payment-detail"></p>
+            </div>
+            <p class="summary-note" id="quote-status">Precios ficticios para esta demo.</p>
+            <button class="primary-button" id="save-quote" type="button" disabled>Guardar alternativa</button>
+            <div class="actions">
+              <button class="reset-button" id="download-quote" type="button" disabled>Descargar TXT</button>
+              <button class="reset-button" id="print-quote" type="button" disabled>Imprimir / PDF</button>
+            </div>
+            <button class="reset-button" type="reset">Reiniciar presupuesto</button>
+          </div>
+          <p class="scope-note">Guardá hasta 3 alternativas en este navegador. El borrador actual se reinicia al recargar.</p>
+        </aside>
+      </form>
+      <section class="saved-section" aria-labelledby="saved-heading">
+        <div class="section-heading">
+          <h2 id="saved-heading">04 / Compará alternativas</h2>
+          <span>Hasta 3 opciones</span>
+        </div>
+        <p id="saved-status" role="status" aria-live="polite">Todavía no guardaste alternativas.</p>
+        <div class="table-wrap" id="comparison-wrap" hidden>
+          <table>
+            <caption>Opciones guardadas en este navegador. Cargá una para editarla o eliminá una para liberar espacio.</caption>
+            <thead><tr><th scope="col">Alternativa</th><th scope="col">Alcance</th><th scope="col">Entrega</th><th scope="col">Total / pagos</th><th scope="col">Acciones</th></tr></thead>
+            <tbody id="comparison-body"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <footer>Prototipo educativo · Todos los importes están expresados en pesos argentinos.</footer>
+  </div>
+  <pre id="print-view"></pre>
+
+  <script>
+    const money = new Intl.NumberFormat('es-AR', {
+      style: 'currency', currency: 'ARS', maximumFractionDigits: 0
+    });
+    const form = document.getElementById('quote-form');
+    const grandTotal = document.getElementById('grand-total');
+    const quoteStatus = document.getElementById('quote-status');
+    const levels = {
+      basic: { label: 'Básico', multiplier: 1 },
+      standard: { label: 'Estándar', multiplier: 1.5 },
+      advanced: { label: 'Avanzado', multiplier: 2 }
+    };
+    const deliveryOptions = { normal: 'Estándar · 15 días', express: 'Express · 7 días' };
+    const projectName = document.getElementById('project-name');
+    const delivery = document.getElementById('delivery');
+    const payment = document.getElementById('payment');
+    const saveButton = document.getElementById('save-quote');
+    const downloadButton = document.getElementById('download-quote');
+    const printButton = document.getElementById('print-quote');
+    const savedStatus = document.getElementById('saved-status');
+    const storageKey = 'poc-cotizador-alternativas-v1';
+    const services = Array.from(document.querySelectorAll('.service'), (card) => {
+      const input = card.querySelector('input');
+      const price = Number(card.dataset.price);
+      document.getElementById(`${input.id}-price`).textContent = `${money.format(price)} / unidad`;
+      return {
+        input, price, id: input.id, name: card.querySelector('h3').textContent,
+        level: document.getElementById(`${input.id}-level`),
+        subtotal: document.getElementById(`${input.id}-subtotal`),
+        error: document.getElementById(`${input.id}-error`)
+      };
+    });
+
+    function readConfig() {
+      return {
+        name: projectName.value.trim(), delivery: delivery.value, payment: payment.value,
+        items: services.map(service => ({
+          id: service.id, quantity: service.input.valueAsNumber, level: service.level.value
+        }))
+      };
+    }
+
+    function calculateQuote(config) {
+      if (!config || typeof config.name !== 'string' || config.name.length > 60 ||
+          !Object.hasOwn(deliveryOptions, config.delivery) || !['split', 'thirds'].includes(config.payment) ||
+          !Array.isArray(config.items) || config.items.length !== services.length) return null;
+      const items = [];
+      for (const service of services) {
+        const item = config.items.find(item => item && item.id === service.id);
+        if (!item || !Number.isSafeInteger(item.quantity) || item.quantity < 0 || !Object.hasOwn(levels, item.level)) return null;
+        const subtotal = service.price * item.quantity * levels[item.level].multiplier;
+        if (!Number.isSafeInteger(subtotal)) return null;
+        items.push({ ...item, name: service.name, subtotal });
+      }
+      const base = items.reduce((sum, item) => sum + item.subtotal, 0);
+      if (!Number.isSafeInteger(base)) return null;
+      const discount = base >= 100000 ? Math.round(base * 0.1) : 0;
+      const rush = config.delivery === 'express' ? Math.round((base - discount) * 0.2) : 0;
+      const total = base - discount + rush;
+      if (!Number.isSafeInteger(total)) return null;
+      const count = config.payment === 'thirds' ? 3 : 2;
+      const installment = Math.floor(total / count);
+      const payments = Array.from({ length: count }, (_, index) =>
+        index === count - 1 ? total - installment * (count - 1) : installment);
+      return { ...config, items, base, discount, rush, total, payments };
+    }
+
+    function paymentText(quote) {
+      return quote.payment === 'thirds'
+        ? `3 cuotas: ${quote.payments.map(value => money.format(value)).join(' / ')}.`
+        : `Anticipo: ${money.format(quote.payments[0])}. Saldo: ${money.format(quote.payments[1])}.`;
+    }
+
+    let currentQuote = null;
+    let savedQuotes = [];
+    let storageAvailable = true;
+
+    function updateQuote() {
+      let fieldErrors = false;
+      for (const service of services) {
+        const quantity = service.input.valueAsNumber;
+        const level = levels[service.level.value];
+        const subtotal = quantity * service.price * (level?.multiplier ?? NaN);
+        let error = '';
+        if (!service.input.validity.valid || !Number.isInteger(quantity) || quantity < 0) {
+          error = 'Ingresá una cantidad entera de 0 o más.';
+        } else if (!Number.isSafeInteger(subtotal)) {
+          error = 'La cantidad es demasiado grande. Probá con un valor menor.';
+        }
+        service.input.setAttribute('aria-invalid', String(Boolean(error)));
+        service.error.textContent = error;
+        service.error.hidden = !error;
+        service.subtotal.textContent = error ? '—' : money.format(subtotal);
+        fieldErrors = fieldErrors || Boolean(error);
+      }
+      currentQuote = fieldErrors ? null : calculateQuote(readConfig());
+      const isInvalid = !currentQuote;
+      grandTotal.dataset.invalid = String(isInvalid);
+      grandTotal.textContent = isInvalid ? 'Revisá las cantidades' : money.format(currentQuote.total);
+      document.getElementById('project-title').textContent = projectName.value.trim() || 'Tu próximo proyecto';
+      for (const [id, key] of [['base-total', 'base'], ['discount-total', 'discount'], ['rush-total', 'rush']]) {
+        document.getElementById(id).textContent = isInvalid ? '—'
+          : `${key === 'discount' && currentQuote.discount ? '−' : ''}${money.format(currentQuote[key])}`;
+      }
+      document.getElementById('delivery-detail').textContent = currentQuote?.total > 0
+        ? deliveryOptions[currentQuote.delivery] : 'Elegí al menos un servicio';
+      document.getElementById('payment-detail').textContent = currentQuote ? paymentText(currentQuote) : 'Corregí las cantidades para distribuir los pagos.';
+      quoteStatus.textContent = isInvalid
+        ? 'Corregí los campos indicados o reducí las cantidades para calcular el total.'
+        : 'Precios y plazos ficticios. El recargo express se aplica después del descuento.';
+      saveButton.disabled = isInvalid || currentQuote.total === 0 || savedQuotes.length >= 3;
+      downloadButton.disabled = printButton.disabled = isInvalid || currentQuote.total === 0;
+    }
+
+    function persistQuotes() {
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(savedQuotes));
+        storageAvailable = true;
+      } catch {
+        storageAvailable = false;
+      }
+    }
+
+    function renderSaved(message = '') {
+      const body = document.getElementById('comparison-body');
+      body.replaceChildren();
+      savedQuotes.forEach((config, index) => {
+        const quote = calculateQuote(config);
+        const row = document.createElement('tr');
+        const nameCell = document.createElement('td');
+        const name = document.createElement('strong');
+        name.textContent = config.name || `Alternativa ${index + 1}`;
+        nameCell.append(name);
+        const scopeCell = document.createElement('td');
+        scopeCell.textContent = quote.items.filter(item => item.quantity > 0)
+          .map(item => `${item.quantity} × ${item.name} (${levels[item.level].label})`).join(' · ');
+        const deliveryCell = document.createElement('td');
+        deliveryCell.textContent = deliveryOptions[quote.delivery];
+        const totalCell = document.createElement('td');
+        const total = document.createElement('strong');
+        total.textContent = money.format(quote.total);
+        totalCell.append(total, document.createTextNode(paymentText(quote)));
+        const actions = document.createElement('td');
+        for (const action of ['Cargar', 'Eliminar']) {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'table-button';
+          button.textContent = action;
+          button.setAttribute('aria-label', `${action} ${name.textContent}`);
+          button.addEventListener('click', () => {
+            if (action === 'Cargar') {
+              projectName.value = config.name;
+              delivery.value = config.delivery;
+              payment.value = config.payment;
+              for (const service of services) {
+                const item = config.items.find(item => item.id === service.id);
+                service.input.value = String(item.quantity);
+                service.level.value = item.level;
+              }
+              updateQuote();
+              savedStatus.textContent = `Cargaste ${name.textContent}. Al guardar crearás otra alternativa.`;
+              projectName.focus();
+            } else {
+              savedQuotes.splice(index, 1);
+              persistQuotes();
+              renderSaved('Alternativa eliminada.');
+              updateQuote();
+            }
+          });
+          actions.append(button);
+        }
+        row.append(nameCell, scopeCell, deliveryCell, totalCell, actions);
+        body.append(row);
+      });
+      document.getElementById('comparison-wrap').hidden = savedQuotes.length === 0;
+      const countMessage = savedQuotes.length === 0 ? 'Todavía no guardaste alternativas.'
+        : savedQuotes.length === 3 ? '3 de 3 alternativas. Eliminá una para guardar otra.'
+          : `${savedQuotes.length} de 3 alternativas guardadas.`;
+      savedStatus.textContent = [message, countMessage,
+        storageAvailable ? '' : 'El navegador no permite guardar: las alternativas quedan solo durante esta sesión.'
+      ].filter(Boolean).join(' ');
+    }
+
+    function quoteText(quote) {
+      const lines = quote.items.filter(item => item.quantity > 0).map(item =>
+        `${item.quantity} × ${item.name} · ${levels[item.level].label}: ${money.format(item.subtotal)}`);
+      return [
+        'PRESUPUESTO ESTIMATIVO', quote.name || 'Tu próximo proyecto', '', ...lines, '',
+        `Subtotal: ${money.format(quote.base)}`,
+        `Descuento por volumen (10 % desde $100.000): ${money.format(quote.discount)}`,
+        `Recargo express (20 % después del descuento): ${money.format(quote.rush)}`,
+        `TOTAL: ${money.format(quote.total)}`, '', `Entrega: ${deliveryOptions[quote.delivery]}`,
+        paymentText(quote), '', 'Precios y plazos ficticios para una demo educativa. Importes en ARS.'
+      ].join('\n');
+    }
+
+    saveButton.addEventListener('click', () => {
+      if (!currentQuote || currentQuote.total === 0 || savedQuotes.length >= 3) return;
+      const config = readConfig();
+      config.name ||= `Alternativa ${savedQuotes.length + 1}`;
+      savedQuotes.push(config);
+      persistQuotes();
+      renderSaved('Alternativa guardada.');
+      updateQuote();
+    });
+    downloadButton.addEventListener('click', () => {
+      if (!currentQuote || currentQuote.total === 0) return;
+      const url = URL.createObjectURL(new Blob(['\uFEFF', quoteText(currentQuote)], { type: 'text/plain;charset=utf-8' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'presupuesto.txt';
+      document.body.append(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    });
+    printButton.addEventListener('click', () => {
+      if (!currentQuote || currentQuote.total === 0) return;
+      document.getElementById('print-view').textContent = quoteText(currentQuote);
+      window.print();
+    });
+
+    form.addEventListener('input', updateQuote);
+    form.addEventListener('change', updateQuote);
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      updateQuote();
+    });
+    form.addEventListener('reset', (event) => {
+      event.preventDefault();
+      for (const service of services) {
+        service.input.value = '0';
+        service.level.value = 'basic';
+      }
+      projectName.value = '';
+      delivery.value = 'normal';
+      payment.value = 'split';
+      updateQuote();
+    });
+    window.addEventListener('pageshow', () => {
+      form.reset();
+    });
+    try {
+      const stored = JSON.parse(localStorage.getItem(storageKey) || '[]');
+      if (Array.isArray(stored)) {
+        savedQuotes = stored.filter(config => calculateQuote(config)?.total > 0).slice(0, 3);
+      }
+    } catch {
+      try { localStorage.getItem(storageKey); } catch { storageAvailable = false; }
+    }
+    renderSaved();
+    updateQuote();
+  </script>
+</body>
+</html>
